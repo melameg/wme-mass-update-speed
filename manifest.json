@@ -1,0 +1,33 @@
+{
+  "manifest_version": 2,
+  "name": "WME Mass Update Speed",
+  "version": "1.00",
+  "content_scripts": [
+    {
+      "js": [
+        "wme-mus.bootstrap.js"
+      ],
+      "matches": [
+        "https://www.waze.com/editor/*",
+        "https://www.waze.com/he/editor/*",
+        "https://www.waze.com/editor?*",
+        "https://www.waze.com/he/editor?*",
+        "https://beta.waze.com/editor/*",
+        "https://beta.waze.com/he/editor/*",
+        "https://beta.waze.com/editor?*",
+        "https://beta.waze.com/he/editor?*",
+        "https://beta.waze.com/*/editor?*"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+  },
+  "permissions": [
+    "activeTab"
+  ],
+  "web_accessible_resources": [
+        "wme-mus.user.js",
+        "WME_mus_segments.json"
+  ]
+}
