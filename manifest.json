@@ -22,6 +22,8 @@
     }
   ],
   "icons": {
+    "128": "logo-128.png",
+    "64": "logo-64.png"
   },
   "permissions": [
     "activeTab"

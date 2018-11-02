@@ -46,6 +46,7 @@
     section.id = "wmeMusSection";
     section.innerHTML  = '<b>Mass Update Speed</b><br/><br/>'
                        +  '<b>Segments in file:&nbsp;</b>'+WME_mus_segmentsAsJson.segments.length+'<br/><br/>'
+                       + '<select id="mus_select_id"></select><br/><br/>'
                        + '<input type="button" value="Update" onclick="updateButtonClick();"/><br/>'
                        + '<label id="result_label" style="word-break:break-word"></label><br/>'
                        + '<label id="error_label" style="word-break:break-word; color:red; font-weight: bold"></label><br/>';
@@ -60,6 +61,17 @@
     tabContent.appendChild(addon);
     addon.appendChild(section);
     tabContent.appendChild(addon);
+    initSelectItems()
+  }
+  
+  initSelectItems = function() {
+      var selectObj = document.getElementById('mus_select_id');
+      $.each(WME_mus_segmentsAsJson.options, function() {
+        var option = document.createElement("option");
+        option.innerText=this.displayName
+        option.value = this.id
+        selectObj.add(option);
+      });      
   }
   
   updateButtonClick = function() {
@@ -69,9 +81,10 @@
   
   composePayload = function() {
     var subActions = []
+    var selectedValue = document.getElementById('mus_select_id').value
     for (var i=0; i< WME_mus_segmentsAsJson.segments.length; i++) {
       var s = WME_mus_segmentsAsJson.segments[i]
-      addSubActionsForSegment(subActions, s.summer, getQueryParam(s.permalink, 's'))
+      addSubActionsForSegment(subActions, s[selectedValue], getQueryParam(s.permalink, 's'))
     }    
     var payload = {
       actions: {
@@ -107,33 +120,6 @@
           alert ('error')
         }
       })
-    // POST
-    // payload;
-    /**
-     * {
-  "actions": {
-    "name": "t",
-    "_subActions": [
-      {
-        "_objectType": "segment",
-        "action": "UPDATE",
-        "attributes": {
-          "fwdMaxSpeed": 60,
-          "id": 1228633
-        }
-      },
-      {
-        "_objectType": "segment",
-        "action": "UPDATE",
-        "attributes": {
-          "revMaxSpeed": 60,
-          "id": 1228633
-        }
-      }
-    ]
-  }
-}
-     */
   }
   
   addSubActionsForSegment = function(existingSubActions, newSpeedVal, segmentID) {
@@ -152,14 +138,6 @@
     attributes["id"]=parseInt(segmentID)
     result["attributes"]=attributes
     return result;
-/*    return {
-      "_objectType":"segment",
-      "action":"UPDATE",
-      "attributes": {
-        revOrFwd: newSpeedVal,
-        "id": segmentID
-      }
-    }*/
   }
   
   getId = function (node) {

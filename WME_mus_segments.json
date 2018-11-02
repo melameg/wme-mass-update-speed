@@ -1,14 +1,12 @@
 {
   "options": [
     {
-      "winter": {
-        "displayName": "Winter"
-      }
+      "id": "winter",
+      "displayName": "Winter"
     },
     {
-      "summer": {
-        "displayName": "Summer"
-      }
+      "id": "summer",
+      "displayName": "Summer"
     }
   ],
   "segments": [
