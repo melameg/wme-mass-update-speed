@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "WME Mass Update Speed",
-  "version": "1.00",
+  "version": "2.00",
   "content_scripts": [
     {
       "js": [

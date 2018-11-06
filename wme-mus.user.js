@@ -45,7 +45,7 @@
     section.style.paddingTop = "0px";
     section.id = "wmeMusSection";
     section.innerHTML  = '<b>Mass Update Speed</b><br/><br/>'
-                       +  '<b>Segments in file:&nbsp;</b>'+WME_mus_segmentsAsJson.segments.length+'<br/><br/>'
+                       +  '<b>Segments in file:&nbsp;</b>'+WME_mus_segmentsAsJson.segments.length+'&nbsp;<a id="musSegmentsListHtml" style="cursor: pointer">(list)</a><br/><br/>'
                        + '<select id="mus_select_id"></select><br/><br/>'
                        + '<input type="button" value="Update" onclick="updateButtonClick();"/><br/>'
                        + '<label id="result_label" style="word-break:break-word"></label><br/>'
@@ -62,6 +62,7 @@
     addon.appendChild(section);
     tabContent.appendChild(addon);
     initSelectItems()
+    $('#musSegmentsListHtml').click(function() { openNewWidowSegmentsList(WME_mus_segmentsAsJson.segments); return false; });
   }
   
   initSelectItems = function() {
@@ -77,6 +78,17 @@
   updateButtonClick = function() {
     var payload = composePayload();
     doPost(payload) 
+  }
+  
+  getBBox = function() {
+    var firstSegment = WME_mus_segmentsAsJson.segments[0];
+    var lon1 = parseFloat(getQueryParam(firstSegment.permalink, 'lon')); 
+    var lat1 = parseFloat(getQueryParam(firstSegment.permalink, 'lat'));
+    var lon2 = lon1 + 0.01
+    var lat2 = lat1 + 0.01
+    var result = lon1 + "%2C" + lat1 + "%2C" + lon2.toFixed(6) + "%2C" + lat2.toFixed(6);  
+    window.console.debug("wme-mus bbox: " + result);
+    return result;
   }
   
   composePayload = function() {
@@ -96,7 +108,7 @@
   }
   
   doPost = function(payload) {
-    var urlVal = "https://" + document.location.host + W.Config.paths.features + "?language=" + I18n.locale + "&bbox=34.846128%2C32.080247%2C34.846817%2C32.080445&ignoreWarnings=";
+    var urlVal = "https://" + document.location.host + W.Config.paths.features + "?language=" + I18n.locale + "&bbox=" + getBBox() + "&ignoreWarnings=";
     // url: https://www.waze.com/il-Descartes/app/Features?language=he&bbox=34.833394%2C32.125737%2C34.833397%2C32.125804&ignoreWarnings=
     if (WME_mus_csrfToken == null) {
       alert ('null token')
@@ -114,12 +126,40 @@
         data: JSON.stringify(payload),
         contentType: "application/json; charset=UTF-8",
         success: function (data, textStatus, jqXHR) {
+          //data.segments[Object.keys(data.segments)[0]]
+          console.debug("wme-mus doPost() succeed. num of segments: " + Object.keys(data.segments).length + ". Segments list:\n" + Object.keys(data.segments));
           alert ('success')
         },
         error: function (data, textStatus, jqXHR) {
           alert ('error')
         }
       })
+  }
+  
+  composePermalink = function(val) {
+    var result = 'https://' + document.location.host + '/';
+    if (I18n.locale !== 'en') {
+      result += I18n.locale + '/';
+    }
+    result += 'editor/?env=' + W.app.getAppRegionCode() + '&lon=' + getQueryParam(val, 'lon') + '&lat=' + getQueryParam(val, 'lat') + '&s=3638528&zoom=7&segments=' + getQueryParam(val, 's');   
+    return result;
+  }
+  
+  openNewWidowSegmentsList = function(segmentsList) {
+    var htmlContent='<html>\n';
+    htmlContent+='<head>\n<title>Segments List</title>\n</head>\n';
+    //font-family: \'Open Sans\',\'Alef\',helvetica,sans-serif
+    htmlContent+='<body style="padding-top:20px; padding-left:50px; ">\n';
+    htmlContent+='<h2>Segments List</h2>';
+    for(var j=0;j<segmentsList.length;j++) {
+      htmlContent+= '<li>';
+      htmlContent+= '<a target="_blank" href="' + composePermalink(segmentsList[j].permalink) + '">' +getQueryParam(segmentsList[j].permalink, 's') + '</a>';  
+    }
+    htmlContent+='</body>\n</html>';
+    newwindow=window.open("","_blank");
+    newdocument=newwindow.document;
+    newdocument.write(htmlContent);
+    newdocument.close();
   }
   
   addSubActionsForSegment = function(existingSubActions, newSpeedVal, segmentID) {
@@ -145,8 +185,8 @@
   }
   
   getQueryParam = function(url, key) {
-      var regex = new RegExp('[\\?&]' + key + '=([^&#]*)');
-      return regex.exec(url)[1];
+      var regex = new RegExp('([\\?&]|^)' + key + '=([^&#]*)');
+      return regex.exec(url)[2];
   }
 
   getElementsByClassName = function(classname, node) {
