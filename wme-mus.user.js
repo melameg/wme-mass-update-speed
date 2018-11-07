@@ -137,10 +137,11 @@
         success: function (data, textStatus, jqXHR) {
           //data.segments[Object.keys(data.segments)[0]]
           console.debug("wme-mus doPost() succeed. num of segments: " + Object.keys(data.segments).length + ". Segments list:\n" + Object.keys(data.segments));
-          alert ('success')
+          alert ('Succeeded')
         },
         error: function (data, textStatus, jqXHR) {
-          alert ('error')
+          console.error("wme-mus doPost() failed. Response Text:\n" + data.responseText)
+          alert ('Failed. Original Message:\n' + data.responseJSON.errorList[0].details);
         }
       })
   }
