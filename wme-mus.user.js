@@ -26,7 +26,7 @@
     console.debug("wme-mus wme_mus_init() succeed. retry: " + retry);
 
     try {
-      WME_mus_segmentsAsJson = JSON.parse(WME_mus_segments);
+      WME_mus_dataAsJson = JSON.parse(WME_mus_data);
     } catch (e) {
       console.error("wme-mus: error parsing JSON: " + e.stack);
       return;                                                               610
@@ -45,7 +45,8 @@
     section.style.paddingTop = "0px";
     section.id = "wmeMusSection";
     section.innerHTML  = '<b>Mass Update Speed</b><br/><br/>'
-                       +  '<b>Segments in file:&nbsp;</b>'+WME_mus_segmentsAsJson.segments.length+'&nbsp;<a id="musSegmentsListHtml" style="cursor: pointer">(list)</a><br/><br/>'
+                       + '<b>Segments in file:&nbsp;</b>'+WME_mus_dataAsJson.segments.length+'&nbsp;<a id="musSegmentsListHtml" style="cursor: pointer">(list)</a><br/>'
+                       + '<b>System of Units in file:&nbsp;</b>'+(WME_mus_dataAsJson.imperialUnits?'Imperial':'Metric')+'<br/><br/>'
                        + '<select id="mus_select_id"></select><br/><br/>'
                        + '<input type="button" value="Update" onclick="updateButtonClick();"/><br/>'
                        + '<label id="result_label" style="word-break:break-word"></label><br/>'
@@ -62,12 +63,12 @@
     addon.appendChild(section);
     tabContent.appendChild(addon);
     initSelectItems()
-    $('#musSegmentsListHtml').click(function() { openNewWidowSegmentsList(WME_mus_segmentsAsJson.segments); return false; });
+    $('#musSegmentsListHtml').click(function() { openNewWidowSegmentsList(WME_mus_dataAsJson.segments); return false; });
   }
   
   initSelectItems = function() {
       var selectObj = document.getElementById('mus_select_id');
-      $.each(WME_mus_segmentsAsJson.options, function() {
+      $.each(WME_mus_dataAsJson.options, function() {
         var option = document.createElement("option");
         option.innerText=this.displayName
         option.value = this.id
@@ -81,12 +82,12 @@
   }
   
   getBBox = function() {
-    var firstSegment = WME_mus_segmentsAsJson.segments[0];
+    var firstSegment = WME_mus_dataAsJson.segments[0];
     var lon1 = parseFloat(getQueryParam(firstSegment.permalink, 'lon')); 
     var lat1 = parseFloat(getQueryParam(firstSegment.permalink, 'lat'));
     var lon2 = lon1 + 0.01
     var lat2 = lat1 + 0.01
-    var result = lon1 + "%2C" + lat1 + "%2C" + lon2.toFixed(6) + "%2C" + lat2.toFixed(6);  
+    var result = lon1 + "%2C" + lat1 + "%2C" + lon2.toFixed(W.Config.units.lonLatPrecision) + "%2C" + lat2.toFixed(W.Config.units.lonLatPrecision);  
     window.console.debug("wme-mus bbox: " + result);
     return result;
   }
@@ -94,9 +95,9 @@
   composePayload = function() {
     var subActions = []
     var selectedValue = document.getElementById('mus_select_id').value
-    for (var i=0; i< WME_mus_segmentsAsJson.segments.length; i++) {
-      var s = WME_mus_segmentsAsJson.segments[i]
-      addSubActionsForSegment(subActions, s[selectedValue], getQueryParam(s.permalink, 's'))
+    for (var i=0; i< WME_mus_dataAsJson.segments.length; i++) {
+      var segment = WME_mus_dataAsJson.segments[i]
+      addSubActionsForSegment(subActions, convertImperial(segment[selectedValue]), getQueryParam(segment.permalink, 's'))
     }    
     var payload = {
       actions: {
@@ -105,6 +106,14 @@
       }
     }
     return payload
+  }
+  
+  convertImperial = function(speed) {
+    if (WME_mus_dataAsJson.imperialUnits) {
+      return parseFloat((speed * 1.609).toFixed())
+    } else {
+      return speed;
+    }
   }
   
   doPost = function(payload) {

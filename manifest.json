@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "WME Mass Update Speed",
-  "version": "2.00",
+  "version": "2.01",
   "content_scripts": [
     {
       "js": [
@@ -30,6 +30,6 @@
   ],
   "web_accessible_resources": [
         "wme-mus.user.js",
-        "WME_mus_segments.json"
+        "WME_mus_data.json"
   ]
 }

@@ -1,4 +1,5 @@
 {
+  "imperialUnits": false,
   "options": [
     {
       "id": "winter",
@@ -12,8 +13,8 @@
   "segments": [
     {
       "permalink": "lon=34.83347&lat=32.12587&s=1228633",
-      "winter": 50,
-      "summer": 60
+      "winter": 60,
+      "summer": 50
     }
   ]
 }
