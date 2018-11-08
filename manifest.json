@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "WME Mass Update Speed",
-  "version": "2.02",
+  "version": "2.04",
   "content_scripts": [
     {
       "js": [
@@ -30,6 +30,6 @@
   ],
   "web_accessible_resources": [
         "wme-mus.user.js",
-        "WME_mus_data.json"
+        "https://raw.githubusercontent.com/melameg/wme-mass-update-speed/master/*"
   ]
 }

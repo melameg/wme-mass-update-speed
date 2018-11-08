@@ -5,9 +5,29 @@
 */
 (function() {
 
+  WME_mus_dataAsJson = null
+
+  function readDataJson(fileURL) {
+    var xhr = new XMLHttpRequest();
+    xhr.overrideMimeType("text/plain");
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState==4 && xhr.status==200) {
+        try {
+          WME_mus_dataAsJson = JSON.parse(xhr.responseText);
+          window.console.log("wme-mus: json data read successfully");
+        } catch (e) {
+          console.error("wme-mus: error parsing JSON: " + e.stack);
+          return;
+        }
+      }
+    }
+    xhr.open("GET", fileURL, false);
+    xhr.send();
+  }
+
   function wme_mus_init(retry) {
     // wait till Waze loads
-    if(!window.W || !window.W.map || !W.loginManager || !W.loginManager.user || !window.W.loginManager.events || !window.W.loginManager.events.register) {
+    if(!window.W || !window.W.map || !W.loginManager || !W.loginManager.user || !window.W.loginManager.events || !window.W.loginManager.events.register || WME_mus_dataAsJson == null) {
         window.console.log("wme-mus waiting for WME... retry: " + retry);
         if (retry >= 0) {
             setTimeout(function () {
@@ -25,13 +45,6 @@
     }
     console.debug("wme-mus wme_mus_init() succeed. retry: " + retry);
 
-    try {
-      WME_mus_dataAsJson = JSON.parse(WME_mus_data);
-    } catch (e) {
-      console.error("wme-mus: error parsing JSON: " + e.stack);
-      return;                                                               610
-    }
-    
     WME_mus_csrfToken = null;
     Promise.resolve(W.loginManager._getCsrfToken()).then(function(res) {
       WME_mus_csrfToken=res;
@@ -209,7 +222,8 @@
     return a;
   }
   
-  // call init method
+  // call init methods
+  readDataJson('https://raw.githubusercontent.com/melameg/wme-mass-update-speed/master/WME_mus_data.json');
   wme_mus_init(10);
 
 })();
