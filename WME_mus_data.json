@@ -15,6 +15,31 @@
       "permalink": "lon=34.83347&lat=32.12587&s=1228633",
       "winter": 60,
       "summer": 50
+    },
+    {
+      "permalink": "lon=34.83347&lat=32.12587&s=1228632",
+      "winter": 60,
+      "summer": 50
+    },
+    {
+      "permalink": "lon=34.83347&lat=32.12587&s=206546",
+      "winter": 60,
+      "summer": 50
+    },
+    {
+      "permalink": "lon=34.83347&lat=32.12587&s=46183",
+      "winter": 60,
+      "summer": 50
+    },
+    {
+      "permalink": "lon=34.83347&lat=32.12587&s=206543",
+      "winter": 60,
+      "summer": 50
+    },
+    {
+      "permalink": "lon=34.83347&lat=32.12587&s=204112",
+      "winter": 60,
+      "summer": 50
     }
   ]
 }
