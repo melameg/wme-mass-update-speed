@@ -5,7 +5,12 @@
 */
 (function() {
 
-  WME_mus_dataAsJson = null
+  WME_mus_dataAsJson = null;
+  WME_mus_errorSegments = [];
+  WME_mus_totalProcessed = 0;
+  WME_mus_bulk = 5;
+  WME_mus_interval = 1000;
+  WME_mus_timeout = 0;
 
   function readDataJson(fileURL) {
     var xhr = new XMLHttpRequest();
@@ -61,9 +66,9 @@
                        + '<b>Segments in file:&nbsp;</b>'+WME_mus_dataAsJson.segments.length+'&nbsp;<a id="musSegmentsListHtml" style="cursor: pointer">(list)</a><br/>'
                        + '<b>System of Units in file:&nbsp;</b>'+(WME_mus_dataAsJson.imperialUnits?'Imperial':'Metric')+'<br/><br/>'
                        + '<select id="mus_select_id"></select><br/><br/>'
-                       + '<input type="button" value="Update" onclick="updateButtonClick();"/><br/>'
-                       + '<label id="result_label" style="word-break:break-word"></label><br/>'
-                       + '<label id="error_label" style="word-break:break-word; color:red; font-weight: bold"></label><br/>';
+                       + '<input type="button" value="Update" onclick="updateButtonClick();"/><br/><br/>'
+                       + '<label id="WME_mus_result_label" style="word-break:break-word"></label><br/>'
+                       + '<label id="WME_mus_error_label" style="word-break:break-word; color:red; font-weight: bold"></label><br/>';
     var userTabs = getId('user-info');
     var navTabs = getElementsByClassName('nav-tabs', userTabs)[0];
     var tabContent = getElementsByClassName('tab-content', userTabs)[0];
@@ -90,9 +95,23 @@
   }
   
   updateButtonClick = function() {
-    var payload = composePayload(WME_mus_dataAsJson.segments);
-    var bbox = getBBox(WME_mus_dataAsJson.segments[0]);
-    doPost(payload, bbox); 
+    WME_mus_errorSegments = []
+    WME_mus_timeout = 0;
+    WME_mus_totalProcessed = 0;
+    $("#WME_mus_result_label").html('');
+    $("#WME_mus_error_label").html('');
+    for (var i = 0; i < WME_mus_dataAsJson.segments.length; i+=WME_mus_bulk) {
+      updateBulk(WME_mus_dataAsJson.segments.slice(i,i+WME_mus_bulk), WME_mus_timeout);
+      WME_mus_timeout += WME_mus_interval;
+    }
+  }
+  
+  updateBulk = function(segments, timeout) {
+    setTimeout(function() {
+      var payload = composePayload(segments);
+      var bbox = getBBox(segments[0]);
+      doPost(payload, bbox, segments, timeout); 
+    }, timeout);
   }
   
   getBBox = function(segment) {
@@ -129,7 +148,26 @@
     }
   }
   
-  doPost = function(payload, bbox) {
+  updateUiStatus = function() {
+    if (WME_mus_dataAsJson.segments.length == WME_mus_totalProcessed) {
+      if (WME_mus_errorSegments.length == 0) {
+        $("#WME_mus_result_label").html('Done!' );
+      } else {
+        $("#WME_mus_result_label").html('Done (with errors).');
+      }
+    } else {
+      $("#WME_mus_result_label").html('Working... Processed: ' + WME_mus_totalProcessed + ' out of ' + WME_mus_dataAsJson.segments.length);
+    }
+    if (WME_mus_errorSegments.length > 0) {
+      var links = []
+      WME_mus_errorSegments.forEach(function(segment) {
+        links.push(composeAtag(segment)); 
+      });      
+      $("#WME_mus_error_label").html('The following ' + WME_mus_errorSegments.length + ' segments failed:<br/>' + links.join(',&nbsp;') + '<br/>Check console for details.');
+    }
+  }
+  
+  doPost = function(payload, bbox, segments, timeout) {
     var urlVal = "https://" + document.location.host + W.Config.paths.features + "?language=" + I18n.locale + "&bbox=" + bbox + "&ignoreWarnings=";
     // url: https://www.waze.com/il-Descartes/app/Features?language=he&bbox=34.833394%2C32.125737%2C34.833397%2C32.125804&ignoreWarnings=
     if (WME_mus_csrfToken == null) {
@@ -139,6 +177,8 @@
     return $.ajax({
         method: "POST",
         url:urlVal,
+        segments: segments,
+        timeout: timeout,
         headers: {
           "X-CSRF-Token":WME_mus_csrfToken,
           "Content-Type":"application/json",
@@ -148,13 +188,22 @@
         data: JSON.stringify(payload),
         contentType: "application/json; charset=UTF-8",
         success: function (data, textStatus, jqXHR) {
-          //data.segments[Object.keys(data.segments)[0]]
           console.debug("wme-mus doPost() succeed. num of segments: " + Object.keys(data.segments).length + ". Segments list:\n" + Object.keys(data.segments));
-          alert ('Succeeded')
+          WME_mus_totalProcessed += this.segments.length;
+          updateUiStatus();
         },
         error: function (data, textStatus, jqXHR) {
-          console.error("wme-mus doPost() failed. Response Text:\n" + data.responseText)
-          alert ('Failed. Original Message:\n' + data.responseJSON.errorList[0].details);
+          if (this.segments.length > 1) {
+            console.debug("wme-mus doPost() failed for " + this.segments.length + " segments. Retrying... Response Text: '" + data.responseText + "'");
+            updateBulk (this.segments.slice(0, this.segments.length/2), (timeout+=WME_mus_interval));
+            updateBulk (this.segments.slice(this.segments.length/2, this.segments.length), (timeout+=WME_mus_interval));
+          } else {
+            var segmentID = getQueryParam(this.segments[0].permalink, 's') 
+            console.error("wme-mus Error!!! Update failed for segment " + segmentID + ". Response Text: '" + data.responseJSON.errorList[0].details + "'");
+            WME_mus_errorSegments.push(this.segments[0]);
+            WME_mus_totalProcessed++;
+            updateUiStatus();
+          }
         }
       })
   }
@@ -176,13 +225,17 @@
     htmlContent+='<h2>Segments List</h2>';
     for(var j=0;j<segmentsList.length;j++) {
       htmlContent+= '<li>';
-      htmlContent+= '<a target="_blank" href="' + composePermalink(segmentsList[j].permalink) + '">' +getQueryParam(segmentsList[j].permalink, 's') + '</a>';  
+      htmlContent+= composeAtag(segmentsList[j]);  
     }
     htmlContent+='</body>\n</html>';
     newwindow=window.open("","_blank");
     newdocument=newwindow.document;
     newdocument.write(htmlContent);
     newdocument.close();
+  }
+  
+  composeAtag = function(segment) {
+    return '<a target="_blank" href="' + composePermalink(segment.permalink) + '">' +getQueryParam(segment.permalink, 's') + '</a>'
   }
   
   addSubActionsForSegment = function(existingSubActions, newSpeedVal, segmentID) {
