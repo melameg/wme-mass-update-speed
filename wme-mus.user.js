@@ -90,14 +90,14 @@
   }
   
   updateButtonClick = function() {
-    var payload = composePayload();
-    doPost(payload) 
+    var payload = composePayload(WME_mus_dataAsJson.segments);
+    var bbox = getBBox(WME_mus_dataAsJson.segments[0]);
+    doPost(payload, bbox); 
   }
   
-  getBBox = function() {
-    var firstSegment = WME_mus_dataAsJson.segments[0];
-    var lon1 = parseFloat(getQueryParam(firstSegment.permalink, 'lon')); 
-    var lat1 = parseFloat(getQueryParam(firstSegment.permalink, 'lat'));
+  getBBox = function(segment) {
+    var lon1 = parseFloat(getQueryParam(segment.permalink, 'lon')); 
+    var lat1 = parseFloat(getQueryParam(segment.permalink, 'lat'));
     var lon2 = lon1 + 0.01
     var lat2 = lat1 + 0.01
     var result = lon1 + "%2C" + lat1 + "%2C" + lon2.toFixed(W.Config.units.lonLatPrecision) + "%2C" + lat2.toFixed(W.Config.units.lonLatPrecision);  
@@ -105,11 +105,11 @@
     return result;
   }
   
-  composePayload = function() {
+  composePayload = function(segments) {
     var subActions = []
     var selectedValue = document.getElementById('mus_select_id').value
-    for (var i=0; i< WME_mus_dataAsJson.segments.length; i++) {
-      var segment = WME_mus_dataAsJson.segments[i]
+    for (var i=0; i< segments.length; i++) {
+      var segment = segments[i]
       addSubActionsForSegment(subActions, convertImperial(segment[selectedValue]), getQueryParam(segment.permalink, 's'))
     }    
     var payload = {
@@ -129,8 +129,8 @@
     }
   }
   
-  doPost = function(payload) {
-    var urlVal = "https://" + document.location.host + W.Config.paths.features + "?language=" + I18n.locale + "&bbox=" + getBBox() + "&ignoreWarnings=";
+  doPost = function(payload, bbox) {
+    var urlVal = "https://" + document.location.host + W.Config.paths.features + "?language=" + I18n.locale + "&bbox=" + bbox + "&ignoreWarnings=";
     // url: https://www.waze.com/il-Descartes/app/Features?language=he&bbox=34.833394%2C32.125737%2C34.833397%2C32.125804&ignoreWarnings=
     if (WME_mus_csrfToken == null) {
       alert ('null token')
