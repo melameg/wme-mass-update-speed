@@ -6,7 +6,7 @@
 (function() {
 
   WME_mus_dataAsJson = null;
-  WME_mus_errorSegments = [];
+  WME_mus_erros = [];
   WME_mus_totalProcessed = 0;
   WME_mus_bulk = 5;
   WME_mus_interval = 1000;
@@ -48,7 +48,7 @@
     } else if (!W.loginManager.user || W.loginManager.user.normalizedLevel < 4) {
       return;
     }
-    console.debug("wme-mus wme_mus_init() succeed. retry: " + retry);
+    console.debug("wme-mus wme_mus_init() succeed. retry (left): " + retry);
 
     WME_mus_csrfToken = null;
     Promise.resolve(W.loginManager._getCsrfToken()).then(function(res) {
@@ -95,7 +95,8 @@
   }
   
   updateButtonClick = function() {
-    WME_mus_errorSegments = []
+    window.console.info("wme-mus updateButtonClick()...");
+    WME_mus_erros = []
     WME_mus_timeout = 0;
     WME_mus_totalProcessed = 0;
     $("#WME_mus_result_label").html('');
@@ -107,6 +108,7 @@
   }
   
   updateBulk = function(segments, timeout) {
+    window.console.debug("updateBulk() size: " + segments.length + "...");
     setTimeout(function() {
       var payload = composePayload(segments);
       var bbox = getBBox(segments[0]);
@@ -150,21 +152,31 @@
   
   updateUiStatus = function() {
     if (WME_mus_dataAsJson.segments.length == WME_mus_totalProcessed) {
-      if (WME_mus_errorSegments.length == 0) {
+      if (WME_mus_erros.length == 0) {
         $("#WME_mus_result_label").html('Done!' );
       } else {
-        $("#WME_mus_result_label").html('Done (with errors).');
+        $("#WME_mus_result_label").html('Done with errors. ' + '<a href="javascript:openNewWidowErrorsReport();" id="musErrorsListHtml" style="cursor: pointer">Errors Report</a><br/>');
       }
+      window.console.info("wme-mus updateUiStatus() Done.");
     } else {
       $("#WME_mus_result_label").html('Working... Processed: ' + WME_mus_totalProcessed + ' out of ' + WME_mus_dataAsJson.segments.length);
     }
-    if (WME_mus_errorSegments.length > 0) {
-      var links = []
-      WME_mus_errorSegments.forEach(function(segment) {
-        links.push(composeAtag(segment)); 
-      });      
-      $("#WME_mus_error_label").html('The following ' + WME_mus_errorSegments.length + ' segments failed:<br/>' + links.join(',&nbsp;') + '<br/>Check console for details.');
+  }
+  
+  openNewWidowErrorsReport = function() {
+    var htmlContent='<html>\n';
+    htmlContent+='<head>\n<title>Errors Report</title>\n</head>\n';
+    htmlContent+='<body style="padding-top:20px; padding-left:50px; ">\n';
+    htmlContent+='<h2>Errors List</h2>';
+    for(var j=0;j<WME_mus_erros.length;j++) {
+      htmlContent+= '<li>';
+      htmlContent+= composeAtag(WME_mus_erros[j]) + ':&nbsp;' + WME_mus_erros[j].details + '</li>';  
     }
+    htmlContent+='</body>\n</html>';
+    newwindow=window.open("","_blank");
+    newdocument=newwindow.document;
+    newdocument.write(htmlContent);
+    newdocument.close();
   }
   
   doPost = function(payload, bbox, segments, timeout) {
@@ -174,6 +186,7 @@
       alert ('null token')
       return
     }
+    window.console.debug("doPost() posting (" + (new Date().toISOString()) + ")...");
     return $.ajax({
         method: "POST",
         url:urlVal,
@@ -188,19 +201,24 @@
         data: JSON.stringify(payload),
         contentType: "application/json; charset=UTF-8",
         success: function (data, textStatus, jqXHR) {
-          console.debug("wme-mus doPost() succeed. num of segments: " + Object.keys(data.segments).length + ". Segments list:\n" + Object.keys(data.segments));
+          console.debug("wme-mus doPost() success (" + (new Date().toISOString()) + "). Number of segments: " + Object.keys(data.segments).length + ". Segments list:\n" + Object.keys(data.segments));
           WME_mus_totalProcessed += this.segments.length;
           updateUiStatus();
         },
         error: function (data, textStatus, jqXHR) {
           if (this.segments.length > 1) {
-            console.debug("wme-mus doPost() failed for " + this.segments.length + " segments. Retrying... Response Text: '" + data.responseText + "'");
+            console.warn("wme-mus doPost() error (" + (new Date().toISOString()) + "). For " + this.segments.length + " segments. Retrying... Response Text: '" + data.responseText + "'");
             updateBulk (this.segments.slice(0, this.segments.length/2), (timeout+=WME_mus_interval));
             updateBulk (this.segments.slice(this.segments.length/2, this.segments.length), (timeout+=WME_mus_interval));
           } else {
             var segmentID = getQueryParam(this.segments[0].permalink, 's') 
-            console.error("wme-mus Error!!! Update failed for segment " + segmentID + ". Response Text: '" + data.responseJSON.errorList[0].details + "'");
-            WME_mus_errorSegments.push(this.segments[0]);
+            if (data.responseJSON.errorList.length != 1) {
+              console.error("wme-mus Error!!! For segment " + segmentID + " expected 1 error in errors list, got: " + data.responseText);
+            } else {
+              console.error("wme-mus Error!!! Update failed for segment " + segmentID + ". Response Text: '" + data.responseJSON.errorList[0].details + "'");
+              data.responseJSON.errorList[0]['permalink']=this.segments[0].permalink
+              WME_mus_erros.push(data.responseJSON.errorList[0]);
+            }
             WME_mus_totalProcessed++;
             updateUiStatus();
           }

@@ -1,5 +1,5 @@
 (function() {
-  console.debug("wme-mus: loading bootstrap...")
+  console.info("wme-mus: loading bootstrap...")
   var bootstrap = document.createElement('script');
   bootstrap.async = true;
   bootstrap.src = chrome.extension.getURL("wme-mus.user.js");
