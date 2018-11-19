@@ -6,6 +6,7 @@
 (function() {
 
   WME_mus_dataAsJson = null;
+  WME_mus_segments = []
   WME_mus_erros = [];
   WME_mus_totalProcessed = 0;
   WME_mus_bulk = 5;
@@ -20,6 +21,7 @@
         try {
           WME_mus_dataAsJson = JSON.parse(xhr.responseText);
           window.console.log("wme-mus: json data read successfully");
+          WME_mus_segments = convertMultiValue(WME_mus_dataAsJson.segments);
         } catch (e) {
           console.error("wme-mus: error parsing JSON: " + e.stack);
           return;
@@ -29,7 +31,49 @@
     xhr.open("GET", fileURL, false);
     xhr.send();
   }
+  
+  /*
+  * To support permalink with multi segments value like: "lon=24.47175&lat=60.26917&segments=338772621,316268526,249232983,262271419,366064066"
+  * Convert each multi value to single ones.
+  */
+  convertMultiValue = function(segmentsWithMultiValue) {
+    var result = [];
+    for (var i=0; i<segmentsWithMultiValue.length; i++) {
+      var segmentIDs = getQueryParam(segmentsWithMultiValue[i].permalink, 'segments').split(',');
+      if (segmentIDs.length == 1) {
+        result.push(segmentsWithMultiValue[i]);
+      } else {
+        for (var j=0; j<segmentIDs.length; j++) {
+          result.push(cloneSegment(segmentIDs[j], segmentsWithMultiValue[i]));
+        }
+      }
+    }
+    return result;
+  }
+  
+  /*
+  * Clone segment with multi ids to a segment with single id.
+  * segment as the segment object defined in WME_mus_data.json file.
+  */
+  cloneSegment = function(id, segment) {
+    var s = {};
+    $.each(WME_mus_dataAsJson.options, function() {
+      s[this.id] = segment[this.id]; 
+    });
+    var queryParams = segment.permalink.split('&');
+    for (var i=0; i<queryParams.length; i++) {
+        if (queryParams[i].startsWith('segments=')) {
+          queryParams[i] = 'segments=' + id; 
+        }
+    }
+    s.permalink = queryParams.join('&');
+    return s;  
+  }    
 
+  /*
+  * recursive init functions.
+  * Exit if waze was loaded and json was read, or after timeout (error - the script will not load).
+  */
   function wme_mus_init(retry) {
     // wait till Waze loads
     if(!window.W || !window.W.map || !W.loginManager || !W.loginManager.user || !window.W.loginManager.events || !window.W.loginManager.events.register || WME_mus_dataAsJson == null) {
@@ -50,20 +94,21 @@
     }
     console.debug("wme-mus wme_mus_init() succeed. retry (left): " + retry);
 
+    // get csrf token to be used later
     WME_mus_csrfToken = null;
     Promise.resolve(W.loginManager._getCsrfToken()).then(function(res) {
       WME_mus_csrfToken=res;
       console.info('wme-mus WME_mus_csrfToken='+res);
     });
     
+    // user interface
     var tabTitle = "Mus";
-    // add new box to left of the map
     var addon = document.createElement('section');
     var section = document.createElement('p');
     section.style.paddingTop = "0px";
     section.id = "wmeMusSection";
     section.innerHTML  = '<b>Mass Update Speed</b><br/><br/>'
-                       + '<b>Segments in file:&nbsp;</b>' + getNumOfSegments() + '&nbsp;<a id="musSegmentsListHtml" style="cursor: pointer">(list)</a><br/>'
+                       + '<b>Segments in file:&nbsp;</b>' + WME_mus_segments.length + '&nbsp;<a id="musSegmentsListHtml" style="cursor: pointer">(list)</a><br/>'
                        + '<b>System of Units in file:&nbsp;</b>'+(WME_mus_dataAsJson.imperialUnits?'Imperial':'Metric')+'<br/><br/>'
                        + '<select id="mus_select_id"></select><br/><br/>'
                        + '<input type="button" value="Update" onclick="updateButtonClick();"/><br/><br/>'
@@ -81,18 +126,12 @@
     addon.appendChild(section);
     tabContent.appendChild(addon);
     initSelectItems()
-    $('#musSegmentsListHtml').click(function() { openNewWidowSegmentsList(WME_mus_dataAsJson.segments); return false; });
+    $('#musSegmentsListHtml').click(function() { openNewWidowSegmentsList(WME_mus_segments); return false; });
   }
   
-  getNumOfSegments = function() {
-    var result = 0;
-    for (var i = 0; i < WME_mus_dataAsJson.segments.length; i++) {
-      var segments = getQueryParam(WME_mus_dataAsJson.segments[i].permalink, 'segments') 
-      result+= segments.split(',').length      
-    }
-    return result;
-  }
-  
+  /*
+  * init the drop down from the json 'options' section
+  */
   initSelectItems = function() {
       var selectObj = document.getElementById('mus_select_id');
       $.each(WME_mus_dataAsJson.options, function() {
@@ -103,6 +142,9 @@
       });      
   }
   
+  /*
+  * Button update click event.
+  */
   updateButtonClick = function() {
     window.console.info("wme-mus updateButtonClick()...");
     WME_mus_erros = []
@@ -110,12 +152,16 @@
     WME_mus_totalProcessed = 0;
     $("#WME_mus_result_label").html('');
     $("#WME_mus_error_label").html('');
-    for (var i = 0; i < WME_mus_dataAsJson.segments.length; i+=WME_mus_bulk) {
-      updateBulk(WME_mus_dataAsJson.segments.slice(i,i+WME_mus_bulk), WME_mus_timeout);
+    updateUiStatus();
+    for (var i = 0; i < WME_mus_segments.length; i+=WME_mus_bulk) {
+      updateBulk(WME_mus_segments.slice(i,i+WME_mus_bulk), WME_mus_timeout);
       WME_mus_timeout += WME_mus_interval;
     }
   }
   
+  /*
+  * update bulk of segments
+  */
   updateBulk = function(segments, timeout) {
     window.console.debug("updateBulk() size: " + segments.length + "...");
     setTimeout(function() {
@@ -125,6 +171,9 @@
     }, timeout);
   }
   
+  /*
+  * calc bbox from permalink
+  */
   getBBox = function(segment) {
     var lon1 = parseFloat(getQueryParam(segment.permalink, 'lon')); 
     var lat1 = parseFloat(getQueryParam(segment.permalink, 'lat'));
@@ -135,12 +184,29 @@
     return result;
   }
   
+  /*
+  * convert to imperial if needed
+  */
+  convertImperial = function(speed) {
+    if (WME_mus_dataAsJson.imperialUnits) {
+      return parseFloat((speed * 1.609).toFixed())
+    } else {
+      return speed;
+    }
+  }
+  
+  /*
+  * compose the POST payload for given segments.
+  */
   composePayload = function(segments) {
     var subActions = []
     var selectedValue = document.getElementById('mus_select_id').value
     for (var i=0; i< segments.length; i++) {
       var segment = segments[i]
-      addSubActionsForSegment(subActions, convertImperial(segment[selectedValue]), getQueryParam(segment.permalink, 'segments'))
+      var segmentIDs = getQueryParam(segment.permalink, 'segments').split(',');
+      for (var j=0; j<segmentIDs.length; j++) {
+        addSubActionsForSegment(subActions, convertImperial(segment[selectedValue]), segmentIDs[j]);
+      } 
     }    
     var payload = {
       actions: {
@@ -151,43 +217,33 @@
     return payload
   }
   
-  convertImperial = function(speed) {
-    if (WME_mus_dataAsJson.imperialUnits) {
-      return parseFloat((speed * 1.609).toFixed())
-    } else {
-      return speed;
-    }
+  /*
+  * compose subActions section of POST payload
+  */
+  addSubActionsForSegment = function(existingSubActions, newSpeedVal, segmentID) {
+      var subAction = createSubActionPayload("fwdMaxSpeed", newSpeedVal, segmentID)
+      existingSubActions.push(subAction)
+      subAction = createSubActionPayload("revMaxSpeed", newSpeedVal, segmentID)
+      existingSubActions.push(subAction)
   }
   
-  updateUiStatus = function() {
-    if (WME_mus_dataAsJson.segments.length == WME_mus_totalProcessed) {
-      if (WME_mus_erros.length == 0) {
-        $("#WME_mus_result_label").html('Done!' );
-      } else {
-        $("#WME_mus_result_label").html('Done with errors. ' + '<a href="javascript:openNewWidowErrorsReport();" id="musErrorsListHtml" style="cursor: pointer">Errors Report</a><br/>');
-      }
-      window.console.info("wme-mus updateUiStatus() Done.");
-    } else {
-      $("#WME_mus_result_label").html('Working... Processed: ' + WME_mus_totalProcessed + ' out of ' + WME_mus_dataAsJson.segments.length);
-    }
+  /*
+  * compose subAction section of POST payload
+  */
+  createSubActionPayload = function(revOrFwd, newSpeedVal, segmentID) {
+    var result = {}
+    result["_objectType"]="segment"
+    result["action"]="UPDATE"
+    var attributes = {}
+    attributes[revOrFwd]=newSpeedVal
+    attributes["id"]=parseInt(segmentID)
+    result["attributes"]=attributes
+    return result;
   }
   
-  openNewWidowErrorsReport = function() {
-    var htmlContent='<html>\n';
-    htmlContent+='<head>\n<title>Errors Report</title>\n</head>\n';
-    htmlContent+='<body style="padding-top:20px; padding-left:50px; ">\n';
-    htmlContent+='<h2>Errors List</h2>';
-    for(var j=0;j<WME_mus_erros.length;j++) {
-      htmlContent+= '<li>';
-      htmlContent+= composeAtag(WME_mus_erros[j]) + ':&nbsp;' + WME_mus_erros[j].details + '</li>';  
-    }
-    htmlContent+='</body>\n</html>';
-    newwindow=window.open("","_blank");
-    newdocument=newwindow.document;
-    newdocument.write(htmlContent);
-    newdocument.close();
-  }
-  
+  /*
+  * POST request to WME server.
+  */
   doPost = function(payload, bbox, segments, timeout) {
     var urlVal = "https://" + document.location.host + W.Config.paths.features + "?language=" + I18n.locale + "&bbox=" + bbox + "&ignoreWarnings=";
     // url: https://www.waze.com/il-Descartes/app/Features?language=he&bbox=34.833394%2C32.125737%2C34.833397%2C32.125804&ignoreWarnings=
@@ -235,15 +291,25 @@
       })
   }
   
-  composePermalink = function(val) {
-    var result = 'https://' + document.location.host + '/';
-    if (I18n.locale !== 'en') {
-      result += I18n.locale + '/';
+  /*
+  * update the ui with current status each time server response arrives.
+  */
+  updateUiStatus = function() {
+    if (WME_mus_segments.length == WME_mus_totalProcessed) {
+      if (WME_mus_erros.length == 0) {
+        $("#WME_mus_result_label").html('Done!' );
+      } else {
+        $("#WME_mus_result_label").html('Done with errors. ' + '<a href="javascript:openNewWidowErrorsReport();" id="musErrorsListHtml" style="cursor: pointer">Errors Report</a><br/>');
+      }
+      window.console.info("wme-mus updateUiStatus() Done.");
+    } else {
+      $("#WME_mus_result_label").html('Working... Processed: ' + WME_mus_totalProcessed + ' out of ' + WME_mus_segments.length);
     }
-    result += 'editor/?env=' + W.app.getAppRegionCode() + '&lon=' + getQueryParam(val, 'lon') + '&lat=' + getQueryParam(val, 'lat') + '&s=3638528&zoom=7&segments=' + getQueryParam(val, 'segments');   
-    return result;
   }
   
+  /*
+  * opens a new window with list of all segments
+  */
   openNewWidowSegmentsList = function(segmentsList) {
     var htmlContent='<html>\n';
     htmlContent+='<head>\n<title>Segments List</title>\n</head>\n';
@@ -261,28 +327,44 @@
     newdocument.close();
   }
   
+  /*
+  * Opens a new window with list of errors
+  */
+  openNewWidowErrorsReport = function() {
+    var htmlContent='<html>\n';
+    htmlContent+='<head>\n<title>Errors Report</title>\n</head>\n';
+    htmlContent+='<body style="padding-top:20px; padding-left:50px; ">\n';
+    htmlContent+='<h2>Errors List</h2>';
+    for(var j=0;j<WME_mus_erros.length;j++) {
+      htmlContent+= '<li>';
+      htmlContent+= composeAtag(WME_mus_erros[j]) + ':&nbsp;' + WME_mus_erros[j].details + '</li>';  
+    }
+    htmlContent+='</body>\n</html>';
+    newwindow=window.open("","_blank");
+    newdocument=newwindow.document;
+    newdocument.write(htmlContent);
+    newdocument.close();
+  }
+  
+  /*
+  * Compose a real usable permalink
+  */
+  composePermalink = function(val) {
+    var result = 'https://' + document.location.host + '/';
+    if (I18n.locale !== 'en') {
+      result += I18n.locale + '/';
+    }
+    result += 'editor/?env=' + W.app.getAppRegionCode() + '&lon=' + getQueryParam(val, 'lon') + '&lat=' + getQueryParam(val, 'lat') + '&s=3638528&zoom=5&segments=' + getQueryParam(val, 'segments');   
+    return result;
+  }
+  
   composeAtag = function(segment) {
     return '<a target="_blank" href="' + composePermalink(segment.permalink) + '">' +getQueryParam(segment.permalink, 'segments') + '</a>'
   }
   
-  addSubActionsForSegment = function(existingSubActions, newSpeedVal, segmentID) {
-      var subAction = createSubActionPayload("fwdMaxSpeed", newSpeedVal, segmentID)
-      existingSubActions.push(subAction)
-      subAction = createSubActionPayload("revMaxSpeed", newSpeedVal, segmentID)
-      existingSubActions.push(subAction)
-  }
-  
-  createSubActionPayload = function(revOrFwd, newSpeedVal, segmentID) {
-    var result = {}
-    result["_objectType"]="segment"
-    result["action"]="UPDATE"
-    var attributes = {}
-    attributes[revOrFwd]=newSpeedVal
-    attributes["id"]=parseInt(segmentID)
-    result["attributes"]=attributes
-    return result;
-  }
-  
+  /****************************/
+  /* general javascript utils */
+  /****************************/
   getId = function (node) {
     return document.getElementById(node);
   }
