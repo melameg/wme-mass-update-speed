@@ -12,32 +12,27 @@
   ],
   "segments": [
     {
-      "permalink": "lon=34.83347&lat=32.12587&s=1228633111111",
+      "permalink": "lon=24.47175&lat=60.26917&s=338772621",
       "winter": 60,
       "summer": 50
     },
     {
-      "permalink": "lon=34.83347&lat=32.12587&s=122863211111",
+      "permalink": "lon=24.47175&lat=60.26917&s=316268526",
       "winter": 60,
       "summer": 50
     },
     {
-      "permalink": "lon=34.83347&lat=32.12587&s=206546",
+      "permalink": "lon=24.47175&lat=60.26917&s=249232983",
       "winter": 60,
       "summer": 50
     },
     {
-      "permalink": "lon=34.83347&lat=32.12587&s=46183",
+      "permalink": "lon=24.47175&lat=60.26917&s=262271419",
       "winter": 60,
       "summer": 50
     },
     {
-      "permalink": "lon=34.83347&lat=32.12587&s=206543",
-      "winter": 60,
-      "summer": 50
-    },
-    {
-      "permalink": "lon=34.83347&lat=32.12587&s=204112",
+      "permalink": "lon=24.47175&lat=60.26917&s=366064066",
       "winter": 60,
       "summer": 50
     }
