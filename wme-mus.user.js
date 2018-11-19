@@ -131,7 +131,7 @@
     var selectedValue = document.getElementById('mus_select_id').value
     for (var i=0; i< segments.length; i++) {
       var segment = segments[i]
-      addSubActionsForSegment(subActions, convertImperial(segment[selectedValue]), getQueryParam(segment.permalink, 's'))
+      addSubActionsForSegment(subActions, convertImperial(segment[selectedValue]), getQueryParam(segment.permalink, 'segments'))
     }    
     var payload = {
       actions: {
@@ -211,7 +211,7 @@
             updateBulk (this.segments.slice(0, this.segments.length/2), (timeout+=WME_mus_interval));
             updateBulk (this.segments.slice(this.segments.length/2, this.segments.length), (timeout+=WME_mus_interval));
           } else {
-            var segmentID = getQueryParam(this.segments[0].permalink, 's') 
+            var segmentID = getQueryParam(this.segments[0].permalink, 'segments') 
             if (data.responseJSON.errorList.length != 1) {
               console.error("wme-mus Error!!! For segment " + segmentID + " expected 1 error in errors list, got: " + data.responseText);
             } else {
@@ -231,7 +231,7 @@
     if (I18n.locale !== 'en') {
       result += I18n.locale + '/';
     }
-    result += 'editor/?env=' + W.app.getAppRegionCode() + '&lon=' + getQueryParam(val, 'lon') + '&lat=' + getQueryParam(val, 'lat') + '&s=3638528&zoom=7&segments=' + getQueryParam(val, 's');   
+    result += 'editor/?env=' + W.app.getAppRegionCode() + '&lon=' + getQueryParam(val, 'lon') + '&lat=' + getQueryParam(val, 'lat') + '&s=3638528&zoom=7&segments=' + getQueryParam(val, 'segments');   
     return result;
   }
   
@@ -253,7 +253,7 @@
   }
   
   composeAtag = function(segment) {
-    return '<a target="_blank" href="' + composePermalink(segment.permalink) + '">' +getQueryParam(segment.permalink, 's') + '</a>'
+    return '<a target="_blank" href="' + composePermalink(segment.permalink) + '">' +getQueryParam(segment.permalink, 'segments') + '</a>'
   }
   
   addSubActionsForSegment = function(existingSubActions, newSpeedVal, segmentID) {
