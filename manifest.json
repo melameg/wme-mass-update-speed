@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "WME Mass Update Speed",
-  "version": "2.21",
+  "version": "2.22",
   "content_scripts": [
     {
       "js": [
@@ -9,13 +9,13 @@
       ],
       "matches": [
         "https://www.waze.com/editor/*",
-        "https://www.waze.com/he/editor/*",
+        "https://www.waze.com/*/editor/*",
         "https://www.waze.com/editor?*",
-        "https://www.waze.com/he/editor?*",
+        "https://www.waze.com/*/editor?*",
         "https://beta.waze.com/editor/*",
-        "https://beta.waze.com/he/editor/*",
+        "https://beta.waze.com/*/editor/*",
         "https://beta.waze.com/editor?*",
-        "https://beta.waze.com/he/editor?*",
+        "https://beta.waze.com/*/editor?*",
         "https://beta.waze.com/*/editor?*"
       ],
       "run_at": "document_idle"
