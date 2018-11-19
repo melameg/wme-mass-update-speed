@@ -294,7 +294,7 @@
   }
   
   // call init methods
-  readDataJson('https://raw.githubusercontent.com/melameg/wme-mass-update-speed/master/WME_mus_data.json');
+  readDataJson('https://raw.githubusercontent.com/melameg/wme-mass-update-speed/master/WME_mus_data.json?' + new Date().getTime());
   wme_mus_init(10);
 
 })();
