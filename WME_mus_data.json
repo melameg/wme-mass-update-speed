@@ -12,6 +12,11 @@
   ],
   "segments": [
     {
+      "permalink": "lon=24.47175&lat=60.26917&segments=338772621,316268526,249232983,262271419,366064066",
+      "winter": 60,
+      "summer": 50
+    },
+    {
       "permalink": "lon=24.47175&lat=60.26917&segments=338772621",
       "winter": 60,
       "summer": 50

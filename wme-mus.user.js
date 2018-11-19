@@ -63,7 +63,7 @@
     section.style.paddingTop = "0px";
     section.id = "wmeMusSection";
     section.innerHTML  = '<b>Mass Update Speed</b><br/><br/>'
-                       + '<b>Segments in file:&nbsp;</b>'+WME_mus_dataAsJson.segments.length+'&nbsp;<a id="musSegmentsListHtml" style="cursor: pointer">(list)</a><br/>'
+                       + '<b>Segments in file:&nbsp;</b>' + getNumOfSegments() + '&nbsp;<a id="musSegmentsListHtml" style="cursor: pointer">(list)</a><br/>'
                        + '<b>System of Units in file:&nbsp;</b>'+(WME_mus_dataAsJson.imperialUnits?'Imperial':'Metric')+'<br/><br/>'
                        + '<select id="mus_select_id"></select><br/><br/>'
                        + '<input type="button" value="Update" onclick="updateButtonClick();"/><br/><br/>'
@@ -82,6 +82,15 @@
     tabContent.appendChild(addon);
     initSelectItems()
     $('#musSegmentsListHtml').click(function() { openNewWidowSegmentsList(WME_mus_dataAsJson.segments); return false; });
+  }
+  
+  getNumOfSegments = function() {
+    var result = 0;
+    for (var i = 0; i < WME_mus_dataAsJson.segments.length; i++) {
+      var segments = getQueryParam(WME_mus_dataAsJson.segments[i].permalink, 'segments') 
+      result+= segments.split(',').length      
+    }
+    return result;
   }
   
   initSelectItems = function() {
